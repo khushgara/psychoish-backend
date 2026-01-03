@@ -6,7 +6,7 @@ import assessmentRoutes from "./routes/assessmentRoutes.js";
 import resultRoutes from "./routes/resultRoutes.js";
 import profileRoutes from "./routes/profileRoutes.js";
 import consultationRoutes from "./routes/consultationRoutes.js";
-import "./config/db.js"; // Initialize database connection
+import db from "./config/db.js"; // Initialize database connection
 
 dotenv.config();
 

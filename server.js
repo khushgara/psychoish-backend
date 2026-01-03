@@ -58,7 +58,7 @@ app.get("/db-test", async (req, res) => {
     await db.query("SELECT 1");
     res.json({ success: true });
   } catch (err) {
-    console.error(err);
+    console.error("DB TEST ERROR:", err);
     res.status(500).json({ error: err.message });
   }
 });

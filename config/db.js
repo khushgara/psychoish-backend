@@ -37,4 +37,4 @@ pool.getConnection((err, connection) => {
   }
 });
 
-export default db;
+export default db; 

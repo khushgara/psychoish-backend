@@ -7,14 +7,14 @@ console.log("DB_HOST:", process.env.DB_HOST);
 console.log("DB_PORT:", process.env.DB_PORT);
 
 const pool = mysql.createPool({
-  host: process.env.DB_HOST,        // MUST be mysql.railway.internal
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
-  port: Number(process.env.DB_PORT), // MUST be 3306
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0,
+  host: "mysql.railway.internal",        // MUST be mysql.railway.internal
+  user: "root",
+  password: "UxyakiyEUGJaqenzGdsMNEiJSsJmgbaq",
+  database: "railway",
+  port: 3306 // MUST be 3306
+  // waitForConnections: true,
+  // connectionLimit: 10,
+  // queueLimit: 0,
 });
 
 // Test connection immediately

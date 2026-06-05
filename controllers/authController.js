@@ -2,6 +2,7 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import UserModel from "../models/userModel.js";
 import dotenv from "dotenv";
+import { OAuth2Client } from "google-auth-library";
 
 dotenv.config();
 
@@ -100,6 +101,13 @@ const authController = {
         });
       }
 
+      if (!user.password) {
+        return res.status(401).json({ 
+          success: false,
+          message: "This account uses Google Login. Please sign in with Google." 
+        });
+      }
+
       const isMatch = await bcrypt.compare(password, user.password);
 
       if (!isMatch) {
@@ -156,6 +164,117 @@ const authController = {
         message: "Server error" 
       });
     }
+  },
+
+  // Redirect to Google Consent screen
+  googleAuth(req, res) {
+    try {
+      const callbackUrl = authController.getCallbackUrl(req);
+      console.log("🚀 Google OAuth callback URL selected:", callbackUrl);
+      const client = new OAuth2Client(
+        process.env.GOOGLE_CLIENT_ID,
+        process.env.GOOGLE_CLIENT_SECRET,
+        callbackUrl
+      );
+
+      const authUrl = client.generateAuthUrl({
+        access_type: "offline",
+        scope: [
+          "https://www.googleapis.com/auth/userinfo.profile",
+          "https://www.googleapis.com/auth/userinfo.email",
+        ],
+        prompt: "consent",
+      });
+
+      res.redirect(authUrl);
+    } catch (error) {
+      console.error("❌ Google auth redirect error:", error);
+      res.status(500).json({ success: false, message: "Google auth initialization failed" });
+    }
+  },
+
+  // Google OAuth callback
+  async googleCallback(req, res) {
+    try {
+      const { code } = req.query;
+      if (!code) {
+        return res.redirect(`${authController.getFrontendUrl(req)}/login?error=Google auth failed: missing code`);
+      }
+
+      const client = new OAuth2Client(
+        process.env.GOOGLE_CLIENT_ID,
+        process.env.GOOGLE_CLIENT_SECRET,
+        authController.getCallbackUrl(req)
+      );
+
+      // Exchange code for tokens
+      const { tokens } = await client.getToken(code);
+      client.setCredentials(tokens);
+
+      // Verify ID Token
+      const ticket = await client.verifyIdToken({
+        idToken: tokens.id_token,
+        audience: process.env.GOOGLE_CLIENT_ID,
+      });
+
+      const payload = ticket.getPayload();
+      const { sub: googleId, email, name, picture } = payload;
+
+      // Find or create user
+      let user = await UserModel.findByGoogleId(googleId);
+      
+      if (!user) {
+        // Also check by email to link accounts if they signed up traditionally first
+        user = await UserModel.findByEmail(email);
+        if (user) {
+          // Link googleId to existing account
+          await UserModel.update(user._id.toString(), { googleId, avatar_url: user.avatar_url || picture });
+          user = await UserModel.findById(user._id.toString());
+        } else {
+          // Create new Google user
+          const userId = await UserModel.createGoogleUser(name, email, googleId, picture);
+          user = await UserModel.findById(userId);
+        }
+      }
+
+      // Generate JWT Token
+      const mongoId = user._id ? user._id.toString() : user.id;
+      const token = jwt.sign(
+        { id: mongoId, email: user.email },
+        JWT_SECRET,
+        { expiresIn: "24h" }
+      );
+
+      console.log("✅ Google Login successful for:", user.email);
+      
+      // Redirect to frontend with token
+      res.redirect(`${authController.getFrontendUrl(req)}/?token=${token}`);
+    } catch (error) {
+      console.error("❌ Google callback error:", error);
+      res.redirect(`${authController.getFrontendUrl(req)}/login?error=Google authentication failed`);
+    }
+  },
+
+  // Helpers to get URLs dynamically based on request context
+  getCallbackUrl(req) {
+    const host = req.get("host");
+    if (host.includes("localhost") || host.includes("127.0.0.1")) {
+      return "http://localhost:3000/auth/google/callback";
+    }
+    // Production callback whitelisted in Google Developer Console
+    return "https://psychoish.khushagra.in/auth/google/callback";
+  },
+
+  getFrontendUrl(req) {
+    if (process.env.FRONTEND_URL) {
+      return process.env.FRONTEND_URL;
+    }
+    const host = req.get("host");
+    if (host.includes("localhost") || host.includes("127.0.0.1")) {
+      return "http://localhost:3000";
+    }
+    // Production frontend URL
+    return "https://psychoish.khushagra.in";
   },
 };
 

@@ -5,6 +5,7 @@ import express from "express";
 import cors from "cors";
 import mongoose from "mongoose";
 import authRoutes from "./routes/authRoutes.js";
+import authController from "./controllers/authController.js";
 import assessmentRoutes from "./routes/assessmentRoutes.js";
 import resultRoutes from "./routes/resultRoutes.js";
 import profileRoutes from "./routes/profileRoutes.js";
@@ -52,6 +53,7 @@ const startServer = async () => {
 
   // Routes
   app.use("/api/auth", authRoutes);
+  app.get("/auth/google/callback", authController.googleCallback);
   app.use("/api/assessments", assessmentRoutes);
   app.use("/api/results", resultRoutes);
   app.use("/api/profile", profileRoutes);

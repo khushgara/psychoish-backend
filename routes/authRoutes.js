@@ -8,6 +8,10 @@ const router = express.Router();
 router.post("/signup", authController.signup);
 router.post("/login", authController.login);
 
+// Google OAuth routes
+router.get("/google", authController.googleAuth);
+router.get("/google/callback", authController.googleCallback);
+
 // Protected routes
 router.get("/me", verifyToken, authController.getCurrentUser);
 

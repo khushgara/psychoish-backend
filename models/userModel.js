@@ -5,7 +5,8 @@ const userSchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true },
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
-    password: { type: String, required: true },
+    password: { type: String, default: null },
+    googleId: { type: String, default: null, unique: true, sparse: true },
 
     // Profile fields embedded directly (replaces the old user_profiles table)
     phone: { type: String, default: null },
@@ -29,6 +30,22 @@ const UserModel = {
   async create(name, email, hashedPassword) {
     const user = await User.create({ name, email, password: hashedPassword });
     return user._id.toString();
+  },
+
+  // Create user via Google OAuth
+  async createGoogleUser(name, email, googleId, avatarUrl = null) {
+    const user = await User.create({
+      name,
+      email,
+      googleId,
+      avatar_url: avatarUrl,
+    });
+    return user._id.toString();
+  },
+
+  // Find user by Google ID
+  async findByGoogleId(googleId) {
+    return User.findOne({ googleId }).lean();
   },
 
   // Find user by email (includes password for auth checks)
